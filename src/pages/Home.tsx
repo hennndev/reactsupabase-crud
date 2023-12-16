@@ -1,51 +1,108 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import styled from 'styled-components'
-import { Table, Thead, Tbody, Tr, Th, Td, TableCaption, TableContainer, useDisclosure, Button } from '@chakra-ui/react'
-import { MdModeEdit, MdDelete } from "react-icons/md";
 import Modal from '../components/Modal';
-
+import { useNavigate } from 'react-router-dom';
+import { MdModeEdit, MdDelete } from "react-icons/md";
+import { supabase } from '../supabase/supabaseClient';
+import { Table, Thead, Tbody, Tr, Th, Td, TableCaption, TableContainer, useDisclosure, Button } from '@chakra-ui/react'
 
 const Home = () => {
 
+    const navigate = useNavigate()
+    const [isLoading, setIsLoading] = useState<boolean>(false)
     const { isOpen, onOpen, onClose } = useDisclosure()
+    const [idDelete, setIdDelete] = useState<null | number>(null)
+    const [productsData, setProductsData] = useState<Array<ProductTypes>>([])
 
+    const callData = async () => {
+        const { data, error } = await supabase.from('products').select()
+        if(error) {
+            setProductsData([])
+            setIsLoading(false)
+        } else {
+            setProductsData(data)
+            setIsLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        setIsLoading(true)
+        callData()
+    }, [])
+
+    const handleDeleteProduk = async (id: number) => {
+        const response = await supabase
+            .from('products')
+            .delete()
+            .eq('id', id)
+
+        if(!response.error) {
+            setProductsData(productsData.filter(data => data.id !== id))
+            onClose()
+        }
+    }
+
+    const handleOpenDeleteModal = (id: number) => {
+        setIdDelete(id)
+        onOpen()
+    }
+
+    if(isLoading) {
+        return <p>Loading...</p>
+    }
+    
     return (
         <HomeContainer>
-            <Modal variant='delete' type='confirm' isOpen={isOpen} onClose={onClose} modalTitle='Hapus Produk'>
+            <Modal 
+                variant='delete' 
+                type='confirm' 
+                btnTitle='Delete' 
+                isOpen={isOpen} 
+                handleConfirm={() => handleDeleteProduk(idDelete as number)} 
+                onClose={onClose} 
+                modalTitle='Hapus Produk'>
                 <p>Apakah anda yakin produk ini akan dihapus?</p>
             </Modal>
-            <TableContainer>
-                <Table variant='simple'>
-                    <TableCaption>Tabel produk menggunakan supabase</TableCaption>
-                    <Thead>
-                        <Tr>
-                            <Th>No</Th>
-                            <Th>Nama produk</Th>
-                            <Th>Kategori produk</Th>
-                            <Th>Harga produk</Th>
-                            <Th>Detail produk</Th>
-                            <Th>Aksi</Th>
-                        </Tr>
-                    </Thead>
-                    <Tbody>
-                        <Tr>
-                            <Td>1</Td>
-                            <Td>Laptop ROG</Td>
-                            <Td>Laptop</Td>
-                            <Td>Rp.20.000.000</Td>
-                            <Td>
-                                <Button variant='ghost' size='sm' colorScheme='gray'>Detail produk</Button>
-                            </Td>
-                            <Td>
-                               <div className='flexx'>
-                                    <MdModeEdit className='ikon-edit'/>
-                                    <MdDelete className='ikon-delete' onClick={onOpen}/>
-                               </div>
-                            </Td>
-                        </Tr>
-                    </Tbody>
-                </Table>
-            </TableContainer>
+            {productsData.length > 0 ? (
+                <TableContainer>
+                    <Table variant='simple'>
+                        <TableCaption>Tabel produk menggunakan supabase</TableCaption>
+                        <Thead>
+                            <Tr>
+                                <Th>No</Th>
+                                <Th>Nama produk</Th>
+                                <Th>Kategori produk</Th>
+                                <Th>Harga produk</Th>
+                                <Th>Detail produk</Th>
+                                <Th>Aksi</Th>
+                            </Tr>
+                        </Thead>
+                        <Tbody>
+                            {productsData.map((data, index) => (
+                                <Tr key={data.id}>
+                                    <Td>{index + 1}</Td>
+                                    <Td>{data.nama_produk}</Td>
+                                    <Td>{data.kategori_produk}</Td>
+                                    <Td>Rp.{data.harga_produk}</Td>
+                                    <Td>
+                                        <Button variant='ghost' size='sm' colorScheme='gray'>Detail produk</Button>
+                                    </Td>
+                                    <Td>
+                                    <div className='flexx'>
+                                            <MdModeEdit className='ikon-edit' onClick={() => navigate(`/edit-produk/${data.id}`)}/>
+                                            <MdDelete className='ikon-delete' onClick={() => handleOpenDeleteModal(data.id)}/>
+                                    </div>
+                                    </Td>
+                                </Tr>
+                            ))}
+                        </Tbody>
+                    </Table>
+                </TableContainer>
+            ): (
+                <div className='flex-center'>
+                    <p>Data kosong</p>
+                </div>
+            )}
         </HomeContainer>
     )
 }

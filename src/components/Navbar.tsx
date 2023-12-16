@@ -1,14 +1,11 @@
-import React from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 
 const Navbar = () => {
     const navigate = useNavigate()
-
     const handleNavigate = (route: string) => {
         navigate(route)
     }
-
     return (
         <NavbarContainer>
             <div className='flex-between sub-container'>
@@ -21,9 +18,6 @@ const Navbar = () => {
         </NavbarContainer>
     )
 }
-
-
-
 
 const NavbarContainer = styled.header`
     max-width: 1300px;

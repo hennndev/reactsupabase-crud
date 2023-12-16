@@ -1,16 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useForm } from 'react-hook-form'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../supabase/supabaseClient'
 import { FormControl, FormLabel, FormErrorMessage, FormHelperText, Input, Select, Textarea, Button, useToast } from '@chakra-ui/react'
 
-
-const TambahProduk = () => {
+const EditProduk = () => {
 
     const toast = useToast()
+    const params = useParams()
+    const [dataProduct, setDataProduct] = useState<ProductTypes>()
     const [isLoading, setIsLoading] = useState<boolean>(false)
-    const { register, formState: {errors}, handleSubmit, reset, clearErrors } = useForm<FormTypes>({defaultValues: {
-        namaProduk: '',
+    const { register, formState: {errors}, setValue, handleSubmit, reset, clearErrors } = useForm<FormTypes>({defaultValues: {
+        namaProduk:  '',
         hargaProduk: '',
         kategoriProduk: '',
         deskripsiProduk: '',
@@ -18,30 +20,52 @@ const TambahProduk = () => {
     }})
     const onSubmit = async (values: FormTypes) => {
         setIsLoading(true)
-        const insertDataPromise = new Promise(async(resolve, reject) => {
+        const updateDataPromise = new Promise(async(resolve, reject) => {
             const response = await supabase.from('products')
-                .insert({
+                .update({
                     nama_produk: values.namaProduk,
                     harga_produk: values.hargaProduk,
                     kategori_produk: values.kategoriProduk,
                     deskripsi_produk: values.deskripsiProduk,
                     kondisi_produk: values.kondisiProduk
                 })
-                console.log(response)
+                .eq('id', params.id)
             if(response.error) {
-                reject('Data gagal upload')
+                reject('Gagal edit data produk')
                 setIsLoading(false)
             } else {
-                resolve(201)
+                resolve(200)
                 setIsLoading(false)
             }
+
         })
-        toast.promise(insertDataPromise, {
-            success: { title: 'Promise resolved', description: 'Data berhasil diupload' },
-            error: { title: 'Promise rejected', description: 'Data gagal diupload' },
+        toast.promise(updateDataPromise, {
+            success: { title: 'Promise resolved', description: 'Data berhasil diedit' },
+            error: { title: 'Promise rejected', description: 'Data gagal diedit' },
             loading: { title: 'Promise pending', description: 'Loading...' },
         })
     }
+
+    useEffect(() => {
+        const getDataProduct = async () => {
+            const { data } = await supabase.from('products').select().eq('id', params.id)
+            if(data) {
+                setDataProduct(data[0])
+            }
+        }
+        getDataProduct()
+    }, [params.id])
+
+    useEffect(() => {
+        if(dataProduct) {
+            setValue('namaProduk', dataProduct?.nama_produk)
+            setValue('hargaProduk', dataProduct?.harga_produk)
+            setValue('kategoriProduk', dataProduct?.kategori_produk)
+            setValue('deskripsiProduk', dataProduct?.deskripsi_produk)
+            setValue('kondisiProduk', dataProduct?.kondisi_produk)
+        }
+    }, [dataProduct])
+    
 
     const handleReset = () => {
         reset()
@@ -51,7 +75,7 @@ const TambahProduk = () => {
     return (
         <TambahProdukContainer>
             <form className='form' onSubmit={handleSubmit(onSubmit)}>
-                <h1 className='title'>Tambah produk</h1>
+                <h1 className='title'>Edit produk</h1>
                 {/* NAMA */}
                 <FormControl className='input-control' isInvalid={Boolean(errors?.namaProduk?.message as string)}>
                     <FormLabel>Nama produk</FormLabel>
@@ -80,7 +104,7 @@ const TambahProduk = () => {
                 {/* KATEGORI */}
                 <FormControl className='input-control' isInvalid={Boolean(errors?.kategoriProduk?.message as string)}>
                     <FormLabel>Kategori produk</FormLabel>
-                    <Select placeholder='Pilih Kategori Produk' {...register('kategoriProduk', {
+                    <Select placeholder='Pilih Kategori' {...register('kategoriProduk', {
                         required: 'Field ini wajib diisi',
                     })}>
                         <option value='laptop'>Laptop</option>
@@ -110,7 +134,7 @@ const TambahProduk = () => {
                     </Select>
                     <FormErrorMessage>{errors?.kondisiProduk?.message}</FormErrorMessage>
                 </FormControl>
-                <Button isLoading={isLoading} loadingText='Submitting...' type='submit' variant='solid' colorScheme='blue' className='submit-button'>SUBMIT NEW PRODUK</Button>
+                <Button isLoading={isLoading} loadingText='Submitting...' type='submit' variant='solid' colorScheme='blue' className='submit-button'>SUBMIT EDIT PRODUK</Button>
                 {!isLoading ? (
                     <Button type='button' variant='solid' colorScheme='red' onClick={handleReset}>CLEAR</Button>
                 ) : null}
@@ -119,13 +143,15 @@ const TambahProduk = () => {
     )
 }
 
-export default TambahProduk
+export default EditProduk
 
 
 const TambahProdukContainer = styled.section`
     max-width: 1100px;
     margin: 50px auto;
     .form {
+        border: 1px solid #ccc;
+        border-radius: 6px;
         padding: 15px;
     }
     .title {
